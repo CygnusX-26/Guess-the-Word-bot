@@ -100,6 +100,11 @@ class guess(commands.Cog):
             updateGuess(ctx.message.guild.id)
             c.execute(f"SELECT * FROM guild WHERE guild = {ctx.message.guild.id}")
             check = c.fetchone()
+            if check[5] <= 0:
+                removeGuild(ctx.message.guild.id)
+                message = await ctx.send("You lose :(")
+                return
+
             await ctx.send(f"Guess again! {check[5]} guesses remaining")
             return
         str = ''
