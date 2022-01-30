@@ -1,3 +1,3 @@
 /.vscode
 /guild.db
-/__pycache__
+__pycache__/
