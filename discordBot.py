@@ -4,6 +4,7 @@ from discord.ext import commands
 from cogs.bot import bot
 from cogs.start import start
 from cogs.guess import guess
+from cogs.close import close
 import sqlite3
 from os.path import join, dirname, abspath
 
@@ -37,6 +38,7 @@ client.remove_command('help')
 
 client.add_cog(bot(client))
 client.add_cog(start(client))
+client.add_cog(close(client))
 client.add_cog(guess(client))
 
 client.run(os.getenv("DISCORD_BOT_TOKEN"))
