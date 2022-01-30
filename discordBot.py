@@ -22,7 +22,8 @@ try:
             new text,
             ongoing int,
             remaining int,
-            current text
+            current text,
+            guess int
             )""")
 
 except:
