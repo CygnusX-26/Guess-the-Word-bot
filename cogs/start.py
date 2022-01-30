@@ -18,9 +18,9 @@ def getGuild(guild):
     return c.fetchone()
 
 
-def insertGuild(guild, new, ongoing, remaining, current):
+def insertGuild(guild, new, ongoing, remaining, current, guess):
     with conn:
-        c.execute(f"INSERT INTO guild VALUES (?, ?, ?, ?, ?)", (guild, new, ongoing, remaining, current))
+        c.execute(f"INSERT INTO guild VALUES (?, ?, ?, ?, ?, ?)", (guild, new, ongoing, remaining, current, guess))
 
 
 def removeGuild(guild):
@@ -41,6 +41,15 @@ def updateCurrent(guild, new):
         c.execute(f"""UPDATE guild SET current = ?
                 WHERE guild = ?
                 """, (new, guild))
+
+def updateGuess(guild):
+    c.execute(f"SELECT * FROM guild WHERE guild = ?", (guild,))
+    check = c.fetchone()
+    check = check[5]
+    with conn:
+        c.execute(f"""UPDATE guild SET guess = ?
+                WHERE guild = ?
+                """, (check - 1, guild))
 
 def underScore(word: str, letter = None) -> str:
     st = ""
@@ -64,13 +73,14 @@ def lenWO_(word: str) -> int:
             count += 1
     return count
 
-def formEmbed(randword):
+def formEmbed(randword, guess):
     embed = discord.Embed(
             name = 'Hangman!',
             description = f'{lenWO_(randword)} letter word!',
             color = discord.Colour.dark_blue()
         )
     embed.add_field(name='Guess a letter', value = f'{randword}', inline= False)
+    embed.set_footer(text=f'You have {guess} guesses left!')
     return embed
 
 class start(commands.Cog):
@@ -86,7 +96,6 @@ class start(commands.Cog):
         c.execute(f"SELECT * FROM guild WHERE guild = {ctx.message.guild.id}")
         check = c.fetchone()
         count = 0
-        
         if (letter == check[1]):
             removeGuild(ctx.message.guild.id)
             message = await ctx.send("You win!")
@@ -103,6 +112,11 @@ class start(commands.Cog):
             await message.delete()
             return
         if letter not in check[1]:
+            updateGuess(ctx.message.guild.id)
+            if check[5] <= 1:
+                removeGuild(ctx.message.guild.id)
+                message = await ctx.send("You lose :(")
+                return
             await ctx.send("Guess again!")
             return
         else:
@@ -112,16 +126,23 @@ class start(commands.Cog):
                     count += 1
                 else:
                     str += check[4][i]
-            updateLeft(ctx.message.guild.id, count)
+            if (letter not in check[4]):
+                updateLeft(ctx.message.guild.id, count)
+            else:
+                updateGuess(ctx.message.guild.id)
             updateCurrent(ctx.message.guild.id, str)
             c.execute(f"SELECT * FROM guild WHERE guild = {ctx.message.guild.id}")
             check = c.fetchone()
-            await ctx.send(embed = formEmbed(check[4]))
+            await ctx.send(embed = formEmbed(check[4], check[5]))
         c.execute(f"SELECT * FROM guild WHERE guild = {ctx.message.guild.id}")
         check = c.fetchone()
         if (check[3] == 0):
             message = await ctx.send("You win!")
             removeGuild(ctx.message.guild.id)
+            return
+        if check[5] <= 0:
+            removeGuild(ctx.message.guild.id)
+            message = await ctx.send("You lose :(")
             return
         
 
@@ -139,13 +160,13 @@ class start(commands.Cog):
         check = c.fetchall()
         if (len(check) == 0):
             word = self.word.getNewWord()
-            insertGuild(id, word, 1, len(word), underScore(word))
+            insertGuild(id, word, 1, len(word), underScore(word), 10)
 
             c.execute(f"SELECT * FROM guild WHERE guild = {id}")
             check = c.fetchone()
             print(check)
 
-            embed = formEmbed(underScore(check[1]))
+            embed = formEmbed(underScore(check[1]), check[5])
 
             await ctx.send(embed=embed)
         else:
@@ -164,7 +185,7 @@ class start(commands.Cog):
                 check = c.fetchone()
                 print(check)
 
-                embed = formEmbed(underScore(check[1]))
+                embed = formEmbed(underScore(check[1]), check[5])
 
                 await ctx.send(embed=embed)
 
